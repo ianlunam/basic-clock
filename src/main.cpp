@@ -27,9 +27,25 @@ String ssid, pwd;
 
 uint8_t hh, mm, ss;    // Get H, M, S from compile time
 
+uint8_t bl_pin = 25;
+uint8_t backlight = 220;
+
+uint8_t BL_MIN = 202;
+uint8_t BL_MAX = 220;
+
+void setBacklight(int8_t value) {
+    if (backlight != value) {
+        backlight = value;
+        dacWrite(bl_pin, backlight);
+    }
+}
+
 void setup(void) {
     // Get WiFi creds from preferences storage
     Serial.begin(115200);
+
+    dacWrite(bl_pin, backlight);
+
     Preferences wifiCreds;
     wifiCreds.begin("wifiCreds", true);
     ssid = wifiCreds.getString("ssid");
@@ -89,7 +105,7 @@ void setup(void) {
     ArduinoOTA.begin();
 
     tft.init();
-    tft.setRotation(1);
+    tft.setRotation(3);
     tft.fillScreen(TFT_BLACK);
 
     // tft.setTextColor(TFT_YELLOW, TFT_BLACK); // Note: the new fonts do not draw the background colour
@@ -121,8 +137,8 @@ void loop() {
 
         if (omm != mm) { // Only redraw every minute to minimise flicker
             // Uncomment ONE of the next 2 lines, using the ghost image demonstrates text overlay as time is drawn over it
-            tft.setTextColor(0x39C4, TFT_BLACK);    // Leave a 7 segment ghost image, comment out next line!
-            //tft.setTextColor(TFT_BLACK, TFT_BLACK); // Set font colour to black to wipe image
+            // tft.setTextColor(0x39C4, TFT_BLACK);    // Leave a 7 segment ghost image, comment out next line!
+            tft.setTextColor(TFT_BLACK, TFT_BLACK); // Set font colour to black to wipe image
             // Font 7 is to show a pseudo 7 segment display.
             // Font 7 only contains characters [space] 0 1 2 3 4 5 6 7 8 9 0 : .
             tft.drawString("88:88",xpos,ypos,7); // Overwrite the text to clear it
@@ -136,6 +152,12 @@ void loop() {
             xpos+= tft.drawChar(':',xpos,ypos,7);
             if (mm<10) xpos+= tft.drawChar('0',xpos,ypos,7);
             tft.drawNumber(mm,xpos,ypos,7);
+
+            if ((hh >= 21 || hh <= 6)) {
+                setBacklight(BL_MIN);
+            } else {
+                setBacklight(BL_MAX);
+            }
         }
 
         if (ss%2) { // Flash the colon
