@@ -38,14 +38,16 @@ uint8_t bl_pin = 25;
 uint8_t backlight = BL_MIN;
 
 #define THIS_BLACK 0x0
-#define THIS_WHITE 0xFFFFFF
 #define THIS_BLUE 0xFBE0
 #define THIS_GREEN 0x7E0
-#define THIS_RED 0xFF
-#define THIS_YELLOW 0x7FF
 #define THIS_GREY 0x39C4
 
 #ifdef ADD_BINS
+
+#define THIS_WHITE 0xFFFFFF
+#define THIS_RED 0xFF
+#define THIS_YELLOW 0x7FF
+
 uint8_t day = 0;
 uint8_t gardenBin = -1;
 uint8_t recycleBin = -1;
