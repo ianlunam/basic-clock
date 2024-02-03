@@ -162,7 +162,7 @@ void loop() {
 
         // Update digital time
         byte xpos = 6;
-        byte ypos = 30;
+        byte ypos = 40;
 
         if (ss==0 || initial) {
             initial = 0;
@@ -215,14 +215,15 @@ void loop() {
             recycleBin = 14 - ((timelapse + 7)%14);
             gardenBin = 28 - (timelapse%28);
 
-            drawCircle(20, 15, 10, THIS_RED, (landfillBin<7));
-            drawCircle(45, 15, 10, THIS_YELLOW, (recycleBin<7));
+            int8_t binStart = 50;
+            drawCircle(binStart, 15, 10, THIS_RED, (landfillBin<7));
+            drawCircle(binStart + 25, 15, 10, THIS_YELLOW, (recycleBin<7));
             if (gardenBin<7) {
-                drawCircle(70, 15, 10, THIS_GREEN, true);
+                drawCircle(binStart + 50, 15, 10, THIS_GREEN, true);
             } else {
-                drawCircle(70, 15, 10, THIS_GREEN, false);
+                drawCircle(binStart + 50, 15, 10, THIS_GREEN, false);
                 tft.setTextColor(THIS_GREEN, THIS_BLACK);
-                tft.drawNumber((7 + gardenBin - (gardenBin % 7)) / 7, 66, 7, 2);
+                tft.drawNumber((gardenBin - (gardenBin % 7)) / 7, binStart + 46, 7, 2);
             }
         }
     }
