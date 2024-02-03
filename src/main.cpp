@@ -10,9 +10,7 @@
 #include <SPI.h>
 #include <time.h>
 #include <WiFi.h>
-#include <Preferences.h>
 #include <ArduinoOTA.h>
-#include <math.h>
 
 TFT_eSPI tft = TFT_eSPI();    // Invoke library, pins defined in User_Setup.h
 
@@ -23,7 +21,6 @@ bool initial = 1;
 byte xcolon = 0;
 unsigned int colour = 0;
 struct tm timeinfo;
-const char* tz = "NZST-12NZDT,M9.5.0,M4.1.0/3";
 String ssid, pwd;
 
 uint8_t hh, mm, ss;    // Get H, M, S from compile time
@@ -94,13 +91,7 @@ void setup(void) {
     tft.fillScreen(THIS_BLACK);
     dacWrite(TFT_BL, backlight);
 
-    Preferences wifiCreds;
-    wifiCreds.begin("wifiCreds", true);
-    ssid = wifiCreds.getString("ssid");
-    pwd = wifiCreds.getString("password");
-    wifiCreds.end();
-
-    WiFi.begin(ssid.c_str(), pwd.c_str());
+    WiFi.begin(WIFI_SSID, WIFI_PWD);
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
@@ -110,7 +101,7 @@ void setup(void) {
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP()); 
 
-    configTzTime(tz, "nz.pool.ntp.org");
+    configTzTime(TIMEZONE, "nz.pool.ntp.org");
     getLocalTime(&timeinfo);
     targetTime = millis() + 1000;
 
@@ -228,7 +219,7 @@ void loop() {
             } else {
                 drawCircle(binStart + 50, 15, 10, THIS_GREEN, false);
                 tft.setTextColor(THIS_GREEN, THIS_BLACK);
-                tft.drawNumber((gardenBin - (gardenBin % 7)) / 7, binStart + 46, 7, 2);
+                tft.drawNumber((gardenBin - (gardenBin % 7)) / 7, binStart + 47, 7, 2);
             }
         }
 #endif
@@ -236,7 +227,7 @@ void loop() {
 
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("Reconnecting WiFi");
-        WiFi.begin(ssid.c_str(), pwd.c_str());
+        WiFi.begin(WIFI_SSID, WIFI_PWD);
         delay(500);
     }
 }
