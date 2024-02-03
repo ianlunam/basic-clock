@@ -14,9 +14,6 @@
 #include <ArduinoOTA.h>
 #include <math.h>
 
-// Uncomment to add refuse bin schedule
-// #define ADD_BINS
-
 TFT_eSPI tft = TFT_eSPI();    // Invoke library, pins defined in User_Setup.h
 
 uint32_t targetTime = 0;             // for next 1 second timeout
@@ -31,10 +28,8 @@ String ssid, pwd;
 
 uint8_t hh, mm, ss;    // Get H, M, S from compile time
 
-
 uint8_t BL_MIN = 203;
 uint8_t BL_MAX = 220;
-uint8_t bl_pin = 25;
 uint8_t backlight = BL_MIN;
 
 #define THIS_BLACK 0x0
@@ -86,7 +81,7 @@ void setBacklight(int8_t value) {
     Serial.println("setBacklight");
     if (backlight != value) {
         backlight = value;
-        dacWrite(bl_pin, backlight);
+        dacWrite(TFT_BL, backlight);
     }
 }
 
@@ -97,7 +92,7 @@ void setup(void) {
     tft.init();
     tft.setRotation(3);
     tft.fillScreen(THIS_BLACK);
-    dacWrite(bl_pin, backlight);
+    dacWrite(TFT_BL, backlight);
 
     Preferences wifiCreds;
     wifiCreds.begin("wifiCreds", true);
