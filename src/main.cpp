@@ -14,6 +14,9 @@
 #include <ArduinoOTA.h>
 #include <math.h>
 
+// Uncomment to add refuse bin schedule
+// #define ADD_BINS
+
 TFT_eSPI tft = TFT_eSPI();    // Invoke library, pins defined in User_Setup.h
 
 uint32_t targetTime = 0;             // for next 1 second timeout
@@ -34,11 +37,6 @@ uint8_t BL_MAX = 220;
 uint8_t bl_pin = 25;
 uint8_t backlight = BL_MIN;
 
-uint8_t day = 0;
-uint8_t gardenBin = -1;
-uint8_t recycleBin = -1;
-uint8_t landfillBin = -1;
-
 #define THIS_BLACK 0x0
 #define THIS_WHITE 0xFFFFFF
 #define THIS_BLUE 0xFBE0
@@ -47,20 +45,18 @@ uint8_t landfillBin = -1;
 #define THIS_YELLOW 0x7FF
 #define THIS_GREY 0x39C4
 
+#ifdef ADD_BINS
+uint8_t day = 0;
+uint8_t gardenBin = -1;
+uint8_t recycleBin = -1;
+uint8_t landfillBin = -1;
+
 void drawCircle(int16_t x, int16_t y, int16_t r, int16_t colour, bool fill) {
     if (fill) {
         tft.fillCircle(x, y, r-1, colour);
         tft.drawCircle(x, y, r, THIS_WHITE);
     } else {
         tft.drawCircle(x, y, r, colour);
-    }
-}
-
-void setBacklight(int8_t value) {
-    Serial.println("setBacklight");
-    if (backlight != value) {
-        backlight = value;
-        dacWrite(bl_pin, backlight);
     }
 }
 
@@ -81,6 +77,15 @@ int daysDiff() {
 
     double dt = difftime(t1, t2);
     return round(dt / 86400);   
+}
+#endif
+
+void setBacklight(int8_t value) {
+    Serial.println("setBacklight");
+    if (backlight != value) {
+        backlight = value;
+        dacWrite(bl_pin, backlight);
+    }
 }
 
 void setup(void) {
@@ -162,7 +167,10 @@ void loop() {
 
         // Update digital time
         byte xpos = 6;
-        byte ypos = 40;
+        byte ypos = 30;
+#ifdef ADD_BINS
+        ypos += 10;
+#endif
 
         if (ss==0 || initial) {
             initial = 0;
@@ -204,7 +212,7 @@ void loop() {
             tft.drawChar(':',xcolon,ypos,7);
 
         }
-
+#ifdef ADD_BINS
         if (day != timeinfo.tm_mday) {
             day = timeinfo.tm_mday;
             int timelapse = daysDiff();
@@ -226,6 +234,7 @@ void loop() {
                 tft.drawNumber((gardenBin - (gardenBin % 7)) / 7, binStart + 46, 7, 2);
             }
         }
+#endif
     }
 
     if (WiFi.status() != WL_CONNECTED) {
