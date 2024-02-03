@@ -12,6 +12,7 @@
 #include <WiFi.h>
 #include <Preferences.h>
 #include <ArduinoOTA.h>
+#include <math.h>
 
 TFT_eSPI tft = TFT_eSPI();    // Invoke library, pins defined in User_Setup.h
 
@@ -27,23 +28,68 @@ String ssid, pwd;
 
 uint8_t hh, mm, ss;    // Get H, M, S from compile time
 
-uint8_t bl_pin = 25;
-uint8_t backlight = 220;
 
-uint8_t BL_MIN = 202;
+uint8_t BL_MIN = 203;
 uint8_t BL_MAX = 220;
+uint8_t bl_pin = 25;
+uint8_t backlight = BL_MIN;
+
+uint8_t day = 0;
+uint8_t gardenBin = -1;
+uint8_t recycleBin = -1;
+uint8_t landfillBin = -1;
+
+#define THIS_BLACK 0x0
+#define THIS_WHITE 0xFFFFFF
+#define THIS_BLUE 0xFBE0
+#define THIS_GREEN 0x7E0
+#define THIS_RED 0xFF
+#define THIS_YELLOW 0x7FF
+#define THIS_GREY 0x39C4
+
+void drawCircle(int16_t x, int16_t y, int16_t r, int16_t colour, bool fill) {
+    if (fill) {
+        tft.fillCircle(x, y, r-1, colour);
+        tft.drawCircle(x, y, r, THIS_WHITE);
+    } else {
+        tft.drawCircle(x, y, r, colour);
+    }
+}
 
 void setBacklight(int8_t value) {
+    Serial.println("setBacklight");
     if (backlight != value) {
         backlight = value;
         dacWrite(bl_pin, backlight);
     }
 }
 
+int daysDiff() {
+    struct tm tm1;
+    getLocalTime(&tm1);
+    struct tm tm2 = { 0 };
+
+    /* date 2: 2024-1-3 - A landfill and garden bin day */
+    tm2.tm_year = 2024 - 1900;
+    tm2.tm_mon = 1 - 1;
+    tm2.tm_mday = 3;
+    tm2.tm_hour = tm2.tm_min = tm2.tm_sec = 0;
+    tm2.tm_isdst = -1;
+
+    time_t t1 = mktime(&tm1);
+    time_t t2 = mktime(&tm2);
+
+    double dt = difftime(t1, t2);
+    return round(dt / 86400);   
+}
+
 void setup(void) {
     // Get WiFi creds from preferences storage
     Serial.begin(115200);
 
+    tft.init();
+    tft.setRotation(3);
+    tft.fillScreen(THIS_BLACK);
     dacWrite(bl_pin, backlight);
 
     Preferences wifiCreds;
@@ -103,12 +149,6 @@ void setup(void) {
 
     ArduinoOTA.setHostname(str);
     ArduinoOTA.begin();
-
-    tft.init();
-    tft.setRotation(3);
-    tft.fillScreen(TFT_BLACK);
-
-    // tft.setTextColor(TFT_YELLOW, TFT_BLACK); // Note: the new fonts do not draw the background colour
 }
 
 void loop() {
@@ -126,7 +166,7 @@ void loop() {
 
         if (ss==0 || initial) {
             initial = 0;
-            tft.setTextColor(TFT_GREEN, TFT_BLACK);
+            tft.setTextColor(THIS_GREEN, THIS_BLACK);
             tft.setCursor (50, ypos + 60);
 
             char ptr[20];
@@ -136,14 +176,10 @@ void loop() {
 
 
         if (omm != mm) { // Only redraw every minute to minimise flicker
-            // Uncomment ONE of the next 2 lines, using the ghost image demonstrates text overlay as time is drawn over it
-            // tft.setTextColor(0x39C4, TFT_BLACK);    // Leave a 7 segment ghost image, comment out next line!
-            tft.setTextColor(TFT_BLACK, TFT_BLACK); // Set font colour to black to wipe image
-            // Font 7 is to show a pseudo 7 segment display.
-            // Font 7 only contains characters [space] 0 1 2 3 4 5 6 7 8 9 0 : .
+            // tft.setTextColor(THIS_GREY, THIS_BLACK);    // Leave a 7 segment ghost image, comment out next line!
+            tft.setTextColor(THIS_BLACK, THIS_BLACK); // Set font colour to black to wipe image
             tft.drawString("88:88",xpos,ypos,7); // Overwrite the text to clear it
-            // tft.setTextColor(0xFBE0); // Orange
-            tft.setTextColor(0xFBE0); // BluelocalName
+            tft.setTextColor(THIS_BLUE); // Blue
             omm = mm;
 
             if (hh<10) xpos+= tft.drawChar('0',xpos,ypos,7);
@@ -153,7 +189,7 @@ void loop() {
             if (mm<10) xpos+= tft.drawChar('0',xpos,ypos,7);
             tft.drawNumber(mm,xpos,ypos,7);
 
-            if ((hh >= 21 || hh <= 6)) {
+            if ((hh >= 21 || hh <= 5)) {
                 setBacklight(BL_MIN);
             } else {
                 setBacklight(BL_MAX);
@@ -161,11 +197,33 @@ void loop() {
         }
 
         if (ss%2) { // Flash the colon
-            tft.setTextColor(0x39C4, TFT_BLACK);
+            tft.setTextColor(THIS_GREY, THIS_BLACK);
             xpos+= tft.drawChar(':',xcolon,ypos,7);
         } else {
-            tft.setTextColor(0xFBE0, TFT_BLACK);
+            tft.setTextColor(THIS_BLUE, THIS_BLACK);
             tft.drawChar(':',xcolon,ypos,7);
+
+        }
+
+        if (day != timeinfo.tm_mday) {
+            day = timeinfo.tm_mday;
+            int timelapse = daysDiff();
+            Serial.print("Timelapse: ");
+            Serial.println(timelapse);
+
+            landfillBin = 14 - (timelapse%14);
+            recycleBin = 14 - ((timelapse + 7)%14);
+            gardenBin = 28 - (timelapse%28);
+
+            drawCircle(20, 15, 10, THIS_RED, (landfillBin<7));
+            drawCircle(45, 15, 10, THIS_YELLOW, (recycleBin<7));
+            if (gardenBin<7) {
+                drawCircle(70, 15, 10, THIS_GREEN, true);
+            } else {
+                drawCircle(70, 15, 10, THIS_GREEN, false);
+                tft.setTextColor(THIS_GREEN, THIS_BLACK);
+                tft.drawNumber((7 + gardenBin - (gardenBin % 7)) / 7, 66, 7, 2);
+            }
         }
     }
 
